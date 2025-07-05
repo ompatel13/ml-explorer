@@ -3,13 +3,17 @@ import pandas as pd
 import seaborn as sns 
 import matplotlib.pyplot as plt 
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.naive_bayes import GaussianNB
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import (
+    accuracy_score, confusion_matrix, classification_report,
+    mean_squared_error, r2_score
+)
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -81,22 +85,34 @@ if uploaded_file:
     X = df.drop(columns=[target_column])
     y = df[target_column]
 
+    # Fill missing values
+    X = X.fillna(0)
+    y = y.fillna(0)
+
+
+    # Encode non-numeric columns
+    for col in X.select_dtypes(include=['object', 'category']).columns:
+        le = LabelEncoder()
+        X[col] = le.fit_transform(X[col])
+
+
     test_size = st.slider("🧪 Test size", 0.1, 0.5, 0.3)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
 
     st.subheader("🤖 Choose Model")
     model_choice = st.selectbox("Select Model", [
-        "Logistic Regression", "Random Forest",
-        "Decision Tree", "K-Nearest Neighbors",
-        "Support Vector Machine", "Naive Bayes"
+        "Logistic Regression", "Random Forest Classifier",
+            "Decision Tree Classifier", "K-Nearest Neighbors",
+            "Support Vector Machine", "Naive Bayes",  "Linear Regression", "Random Forest Regressor",
+            "Decision Tree Regressor"
     ])
 
     if st.button("Train Model"):
         if model_choice == "Logistic Regression":
             model = LogisticRegression()
-        elif model_choice == "Random Forest":
+        elif model_choice == "Random Forest Classifier":
             model = RandomForestClassifier()
-        elif model_choice == "Decision Tree":
+        elif model_choice == "Decision Tree Classifier":
             model = DecisionTreeClassifier()
         elif model_choice == "K-Nearest Neighbors":
             model = KNeighborsClassifier()
@@ -104,18 +120,32 @@ if uploaded_file:
             model = SVC()
         elif model_choice == "Naive Bayes":
             model = GaussianNB()
+        elif model_choice == "Linear Regression":
+            model = LinearRegression()
+        elif model_choice == "Random Forest Regressor":
+            model = RandomForestRegressor()
+        elif model_choice == "Decision Tree Regressor":
+            model = DecisionTreeRegressor()
 
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
 
         st.subheader("✅ Model Results")
-        st.write(f"Accuracy: {accuracy_score(y_test, y_pred):.2f}")
-        st.text("Classification Report")
-        st.text(classification_report(y_test, y_pred))
+        if "Regressor" in model_choice or model_choice == "Linear Regression":
+            # Regression metrics
+            st.write(f"R² Score: {r2_score(y_test, y_pred):.2f}")
+            st.write(f"Mean Squared Error: {mean_squared_error(y_test, y_pred):.2f}")
+        else:
+            # Classification metrics
+            st.subheader("✅ Classification Results")
+            st.write(f"Accuracy: {accuracy_score(y_test, y_pred):.2f}")
+            st.text("Classification Report")
+            st.text(classification_report(y_test, y_pred))
 
-        st.subheader("📊 Confusion Matrix")
-        cm = confusion_matrix(y_test, y_pred)
-        fig, ax = plt.subplots()
-        sns.heatmap(cm, annot=True, fmt='d', cmap="Blues")
-        st.pyplot(fig)
+            st.subheader("📊 Confusion Matrix")
+            cm = confusion_matrix(y_test, y_pred)
+            fig, ax = plt.subplots()
+            sns.heatmap(cm, annot=True, fmt='d', cmap="Blues")
+            st.pyplot(fig)
+
  
