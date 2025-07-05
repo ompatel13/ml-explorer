@@ -37,12 +37,13 @@ if uploaded_file:
     st.subheader("🧹 Impute Missing Values")
     impute_option = st.selectbox("Choose imputation method", ["None", "Mean", "Median", "Mode"])
     if impute_option != "None":
-        for col in df.select_dtypes(include=['float64', 'int64']).columns:
-            if impute_option == "Mean":
-                df[col].fillna(df[col].mean(), inplace=True)
-            elif impute_option == "Median":
-                df[col].fillna(df[col].median(), inplace=True)
-            elif impute_option == "Mode":
+        for col in df.columns:
+            if df[col].dtype in ['float64', 'int64']:
+                if impute_option == "Mean":
+                    df[col].fillna(df[col].mean(), inplace=True)
+                elif impute_option == "Median":
+                    df[col].fillna(df[col].median(), inplace=True)
+            else:
                 df[col].fillna(df[col].mode()[0], inplace=True)
 
     st.subheader("📦 Outlier Detection")
@@ -60,11 +61,10 @@ if uploaded_file:
     st.write(outliers)
 
     st.subheader("📈 Custom Visualizations")
-
     plot_type = st.selectbox("Choose Plot Type", ["Histogram", "Scatter Plot"])
 
     if plot_type == "Histogram":
-        hist_col = st.selectbox("Select numeric column for Histogram", df.select_dtypes(include=['int64', 'float64']).columns)
+        hist_col = st.selectbox("Select numeric column for Histogram", numeric_cols)
         fig, ax = plt.subplots()
         sns.histplot(df[hist_col], kde=True, color='skyblue', edgecolor='black', ax=ax)
         ax.set_title(f"Histogram of {hist_col}")
@@ -78,23 +78,30 @@ if uploaded_file:
         ax.set_title(f"Scatter Plot: {col1} vs {col2}")
         st.pyplot(fig)
 
-    
     st.subheader("🎯 Select Target Column")
     target_column = st.selectbox("Choose target", df.columns)
 
     X = df.drop(columns=[target_column])
     y = df[target_column]
 
-    # Fill missing values
-    X = X.fillna(0)
-    y = y.fillna(0)
-
-
-    # Encode non-numeric columns
+    # Encode non-numeric features in X
     for col in X.select_dtypes(include=['object', 'category']).columns:
         le = LabelEncoder()
         X[col] = le.fit_transform(X[col])
 
+    # Fill any remaining NaNs (just in case)
+    for col in X.columns:
+        if X[col].isnull().sum() > 0:
+            if X[col].dtype in ['float64', 'int64']:
+                X[col].fillna(X[col].mean(), inplace=True)
+            else:
+                X[col].fillna(X[col].mode()[0], inplace=True)
+
+    if y.dtype == 'object' or y.dtype.name == 'category':
+        le_y = LabelEncoder()
+        y = le_y.fit_transform(y)
+
+    y = pd.Series(y)  # Ensure y stays 1D
 
     test_size = st.slider("🧪 Test size", 0.1, 0.5, 0.3)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
@@ -102,9 +109,9 @@ if uploaded_file:
     st.subheader("🤖 Choose Model")
     model_choice = st.selectbox("Select Model", [
         "Logistic Regression", "Random Forest Classifier",
-            "Decision Tree Classifier", "K-Nearest Neighbors",
-            "Support Vector Machine", "Naive Bayes",  "Linear Regression", "Random Forest Regressor",
-            "Decision Tree Regressor"
+        "Decision Tree Classifier", "K-Nearest Neighbors",
+        "Support Vector Machine", "Naive Bayes",
+        "Linear Regression", "Random Forest Regressor", "Decision Tree Regressor"
     ])
 
     if st.button("Train Model"):
@@ -130,13 +137,22 @@ if uploaded_file:
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
 
-        st.subheader("✅ Model Results")
         if "Regressor" in model_choice or model_choice == "Linear Regression":
-            # Regression metrics
+            st.subheader("✅ Regression Results")
             st.write(f"R² Score: {r2_score(y_test, y_pred):.2f}")
             st.write(f"Mean Squared Error: {mean_squared_error(y_test, y_pred):.2f}")
+            
+            st.subheader("📊 Actual vs Predicted")
+            st.write(pd.DataFrame({"Actual": y_test.values, "Predicted": y_pred}))
+
+            st.subheader("📉 Residuals Plot")
+            residuals = y_test - y_pred
+            fig, ax = plt.subplots()
+            sns.histplot(residuals, kde=True, bins=30, color="red")
+            ax.set_title("Residuals Distribution")
+            st.pyplot(fig)
+
         else:
-            # Classification metrics
             st.subheader("✅ Classification Results")
             st.write(f"Accuracy: {accuracy_score(y_test, y_pred):.2f}")
             st.text("Classification Report")
@@ -147,5 +163,3 @@ if uploaded_file:
             fig, ax = plt.subplots()
             sns.heatmap(cm, annot=True, fmt='d', cmap="Blues")
             st.pyplot(fig)
-
- 
