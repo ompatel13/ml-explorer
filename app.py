@@ -19,7 +19,7 @@ from sklearn.svm import SVC
 from sklearn.metrics import classification_report,accuracy_score, confusion_matrix, mean_squared_error, r2_score
 
 
-# ---------------------- Build Pipeline ----------------------
+# Building Pipeline
 def build_pipeline(model, X):
     numeric_features = X.select_dtypes(include=["int64", "float64"]).columns.tolist()
     categorical_features = X.select_dtypes(include=["object", "category"]).columns.tolist()
@@ -45,7 +45,7 @@ def build_pipeline(model, X):
     ])
 
 
-# ---------------------- Model Trainer ----------------------
+# Model Training 
 
 def train_and_evaluate(model_class, X_train, X_test, y_train, y_test, is_classification=True):
     pipeline = build_pipeline(model_class, X_train)
@@ -78,9 +78,9 @@ def train_and_evaluate(model_class, X_train, X_test, y_train, y_test, is_classif
 
 
 
-# ---------------------- Streamlit UI ----------------------
+# Streamlit UI 
 st.set_page_config(page_title='ML Explorer', page_icon="ml-explorer-icon.png", layout="wide")
-st.title("ML Explorer: Your Personal Data Science Assistant")
+st.title("ML Explorer")
 st.sidebar.header("Model & Preprocessing Controls")
 
 problem_type = st.sidebar.selectbox("Select Problem Type", ["Classification", "Regression"])
@@ -92,7 +92,7 @@ else:
 remove_outliers = st.sidebar.checkbox("Remove Outliers (Z-Score)", value=False)
 
 st.write("""
-### Explore different machine learning models and see how they perform on your data!
+### Explore different Supervised machine learning models and see how they perform on your data!
 Upload your dataset or use a sample one, choose a model, and get instant evaluation metrics.
 """)
 
@@ -117,7 +117,7 @@ elif dataset_option == "Upload CSV":
         st.success("File Uploaded Successfully!")
 
 
-# ---------------------- Data Processing ----------------------
+# Data Processing
 if df is not None:
     st.write("First 5 rows of Dataset")
     st.write(df.head())
@@ -143,7 +143,7 @@ if df is not None:
         if problem_type == "Classification":
             y = y.astype(str)
 
-        # ---------------------- Outlier Detection ----------------------
+        # Outlier Detection 
         if remove_outliers:
             numeric_cols = X.select_dtypes(include=['float64', 'int64']).columns
             z_scores = np.abs((X[numeric_cols] - X[numeric_cols].mean()) / X[numeric_cols].std())
@@ -152,7 +152,7 @@ if df is not None:
             y = y[mask]
             st.info(f"Outliers removed using Z-score. Remaining samples: {X.shape[0]}")
 
-        # ---------------------- Train-Test Split ----------------------
+        # Train-Test Split
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
         st.write("---")
@@ -169,7 +169,7 @@ if df is not None:
             """)
 
 
-        # ---------------------- Model Dispatch ----------------------
+        # Model Selection  
         if problem_type == "Classification":
             if model_selection == "Logistic Regression":
                 train_and_evaluate(LogisticRegression(max_iter=1000), X_train, X_test, y_train, y_test)
